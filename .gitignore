@@ -35,3 +35,6 @@ yarn-error.log*
 
 # Netlify
 .netlify
+
+# Project specific
+project-bolt-sb1-zyvdnn3r/
