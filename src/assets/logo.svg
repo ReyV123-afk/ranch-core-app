@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="800" height="200" viewBox="0 0 800 200" version="1.1" xmlns="http://www.w3.org/2000/svg">
+  <g fill="#000000">
+    <path d="M150,30 C150,30 650,30 650,30 C700,30 740,70 740,120 C740,170 700,210 650,210 C650,210 150,210 150,210 C100,210 60,170 60,120 C60,70 100,30 150,30 Z" fill="none" stroke="#000000" stroke-width="2"/>
+    <text x="400" y="90" text-anchor="middle" font-family="serif" font-size="36">THE RANCHES</text>
+    <text x="400" y="130" text-anchor="middle" font-family="serif" font-size="24">AT</text>
+    <text x="400" y="170" text-anchor="middle" font-family="serif" font-style="italic" font-size="48">Belt Creek</text>
+  </g>
+</svg> 
