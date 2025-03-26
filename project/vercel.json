@@ -1,0 +1,29 @@
+{
+  "version": 2,
+  "builds": [
+    {
+      "src": "server.ts",
+      "use": "@vercel/node"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/api/(.*)",
+      "dest": "server.ts"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "dist/$1"
+    }
+  ],
+  "env": {
+    "VITE_SUPABASE_URL": "@vite_supabase_url",
+    "VITE_SUPABASE_ANON_KEY": "@vite_supabase_anon_key",
+    "VITE_SENDGRID_API_KEY": "@vite_sendgrid_api_key",
+    "VITE_SENDGRID_FROM_EMAIL": "@vite_sendgrid_from_email",
+    "VITE_APP_URL": "@vite_app_url",
+    "VITE_SQUARE_ACCESS_TOKEN": "@vite_square_access_token",
+    "VITE_SQUARE_LOCATION_ID": "@vite_square_location_id",
+    "VITE_SQUARE_ENVIRONMENT": "@vite_square_environment"
+  }
+} 
