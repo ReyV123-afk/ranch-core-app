@@ -1,22 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
-
-declare global {
-  interface ImportMetaEnv {
-    VITE_SUPABASE_URL: string;
-    VITE_SUPABASE_ANON_KEY: string;
-  }
-}
-
-export interface User {
-  id: string;
-  email: string;
-  isPremium: boolean;
-  preferences: {
-    emailNotifications: boolean;
-    darkMode: boolean;
-    language: string;
-  };
-}
+import { User } from '../types';
 
 class AuthService {
   private supabase;
@@ -68,7 +51,16 @@ class AuthService {
 
       if (error) throw error;
 
-      return { user: this.transformUser(data.user), error: null };
+      // Get user profile
+      const { data: profile, error: profileError } = await this.supabase
+        .from('profiles')
+        .select('*')
+        .eq('user_id', data.user.id)
+        .single();
+
+      if (profileError) throw profileError;
+
+      return { user: this.transformUser(data.user, profile), error: null };
     } catch (error) {
       return { user: null, error: error as Error };
     }
@@ -91,7 +83,7 @@ class AuthService {
 
       if (!user) return { user: null, error: null };
 
-      // Fetch user profile
+      // Get user profile
       const { data: profile, error: profileError } = await this.supabase
         .from('profiles')
         .select('*')
@@ -131,6 +123,38 @@ class AuthService {
       return { error: null };
     } catch (error) {
       return { error: error as Error };
+    }
+  }
+
+  async resetPassword(email: string): Promise<{ error: Error | null }> {
+    try {
+      const { error } = await this.supabase.auth.resetPasswordForEmail(email);
+      if (error) throw error;
+      return { error: null };
+    } catch (error) {
+      return { error: error as Error };
+    }
+  }
+
+  async updateProfile(data: Partial<User>): Promise<{ user: User | null; error: Error | null }> {
+    try {
+      const { data: updatedData, error } = await this.supabase.auth.updateUser({
+        data: data
+      });
+      if (error) throw error;
+
+      // Get updated profile
+      const { data: profile, error: profileError } = await this.supabase
+        .from('profiles')
+        .select('*')
+        .eq('user_id', updatedData.user.id)
+        .single();
+
+      if (profileError) throw profileError;
+
+      return { user: this.transformUser(updatedData.user, profile), error: null };
+    } catch (error) {
+      return { user: null, error: error as Error };
     }
   }
 

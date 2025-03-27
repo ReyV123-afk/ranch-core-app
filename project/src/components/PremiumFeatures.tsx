@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { NewsArticle } from '../lib/newsService';
+import { NewsArticle } from '../types';
 
 interface NewsletterTemplate {
   title: string;

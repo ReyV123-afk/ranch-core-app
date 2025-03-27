@@ -1,11 +1,5 @@
 import { Request, Response } from 'express';
-import { Client, Environment } from 'square';
-import { PaymentService } from '../../lib/paymentService';
-
-const square = new Client({
-  accessToken: process.env.VITE_SQUARE_ACCESS_TOKEN,
-  environment: process.env.VITE_SQUARE_ENVIRONMENT as Environment,
-});
+import { paymentService } from '../../lib/paymentService';
 
 export const handleSquareWebhook = async (req: Request, res: Response) => {
   try {
@@ -17,7 +11,7 @@ export const handleSquareWebhook = async (req: Request, res: Response) => {
 
     // Process the webhook event
     const event = req.body;
-    await PaymentService.handleWebhook(event);
+    await paymentService.handleWebhook(event);
 
     // Return success response
     res.json({ success: true });

@@ -1,23 +1,5 @@
-import { createClient } from '@supabase/supabase-js';
 import { supabase } from './supabaseClient';
-
-export interface NewsArticle {
-  id: string;
-  title: string;
-  description: string;
-  url: string;
-  imageUrl: string;
-  publishedAt: string;
-  source: string;
-  category: string;
-  views?: number;
-}
-
-export interface NewsInterest {
-  category: string;
-  keywords: string[];
-  frequency: 'daily' | 'weekly';
-}
+import { NewsArticle, NewsInterest } from '../types';
 
 interface NewsFilters {
   category: string;
@@ -59,8 +41,6 @@ interface RecommendationAnalytics {
 
 declare global {
   interface ImportMetaEnv {
-    VITE_SUPABASE_URL: string;
-    VITE_SUPABASE_ANON_KEY: string;
     VITE_NEWS_API_KEY: string;
     VITE_HUGGINGFACE_API_KEY: string;
   }
@@ -71,10 +51,7 @@ class NewsService {
   private newsApiKey: string;
 
   constructor() {
-    this.supabase = createClient(
-      import.meta.env.VITE_SUPABASE_URL,
-      import.meta.env.VITE_SUPABASE_ANON_KEY
-    );
+    this.supabase = supabase;
     this.newsApiKey = import.meta.env.VITE_NEWS_API_KEY;
   }
 
@@ -426,7 +403,7 @@ class NewsService {
 
       // Count topic occurrences
       const topicCounts = new Map<string, { count: number; category: string }>();
-      topics.forEach(({ words, category, views }: { words: string[]; category: string; views: number }) => {
+      topics.forEach(({ words, category }: { words: string[]; category: string }) => {
         words.forEach((word: string) => {
           const existing = topicCounts.get(word) || { count: 0, category };
           topicCounts.set(word, {

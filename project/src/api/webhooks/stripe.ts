@@ -1,12 +1,7 @@
 import { Request, Response } from 'express';
-import Stripe from 'stripe';
-import { PaymentService } from '../../lib/paymentService';
+import { paymentService } from '../../lib/paymentService';
 
-const stripe = new Stripe(import.meta.env.VITE_STRIPE_SECRET_KEY, {
-  apiVersion: '2025-02-24.acacia'
-});
-
-export const handleStripeWebhook = async (req: Request, res: Response) => {
+export async function handleStripeWebhook(req: Request, res: Response) {
   const sig = req.headers['stripe-signature'];
 
   if (!sig) {
@@ -14,16 +9,13 @@ export const handleStripeWebhook = async (req: Request, res: Response) => {
   }
 
   try {
-    const event = stripe.webhooks.constructEvent(
-      req.body,
-      sig,
-      import.meta.env.VITE_STRIPE_WEBHOOK_SECRET
-    );
-
-    await PaymentService.handleWebhook(event);
+    const { error } = await paymentService.handleWebhook(req.body);
+    if (error) {
+      return res.status(400).json({ error: error.message });
+    }
     res.json({ received: true });
   } catch (err) {
-    console.error('Webhook error:', err);
-    res.status(400).json({ error: 'Webhook error' });
+    console.error('Error processing webhook:', err);
+    res.status(500).json({ error: 'Internal server error' });
   }
-}; 
+} 

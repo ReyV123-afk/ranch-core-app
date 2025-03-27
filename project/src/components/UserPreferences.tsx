@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { newsService } from '../lib/newsService';
-import { NewsInterest } from '../lib/newsService';
+import { NewsInterest } from '../types';
 
 interface UserPreferencesProps {
   onUpdate: () => void;
@@ -88,7 +88,7 @@ const UserPreferences: React.FC<UserPreferencesProps> = ({ onUpdate }) => {
 
   const handleRemoveKeyword = (interestIndex: number, keywordIndex: number) => {
     const newInterests = [...interests];
-    newInterests[interestIndex].keywords = newInterests[interestIndex].keywords.filter((_, i) => i !== keywordIndex);
+    newInterests[interestIndex].keywords = newInterests[interestIndex].keywords.filter((_: string, i: number) => i !== keywordIndex);
     setInterests(newInterests);
   };
 

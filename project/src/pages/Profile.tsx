@@ -34,7 +34,7 @@ const Profile: React.FC = () => {
         </div>
 
         <div className="mb-8">
-          <UserPreferences />
+          <UserPreferences onUpdate={() => {}} />
         </div>
 
         <div className="mb-8">

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { PaymentService } from '../lib/paymentService';
+import { paymentService } from '../lib/paymentService';
 
 interface Payment {
   id: string;
@@ -22,10 +22,11 @@ const PaymentHistory: React.FC = () => {
       if (!user) return;
       try {
         setLoading(true);
-        const data = await PaymentService.getPaymentHistory(user.id);
+        const { history: data, error } = await paymentService.getPaymentHistory(user.id);
+        if (error) throw error;
         setPayments(data);
-      } catch (error) {
-        console.error('Error loading payment history:', error);
+      } catch (err) {
+        console.error('Error loading payment history:', err);
         setError('Failed to load payment history');
       } finally {
         setLoading(false);
@@ -43,15 +44,17 @@ const PaymentHistory: React.FC = () => {
     );
   }
 
+  if (error) {
+    return (
+      <div className="mb-4 p-4 bg-red-50 text-red-700 rounded-md">
+        {error}
+      </div>
+    );
+  }
+
   return (
     <div className="bg-white rounded-lg shadow-md p-6">
       <h2 className="text-xl font-semibold text-gray-800 mb-6">Payment History</h2>
-
-      {error && (
-        <div className="mb-4 p-4 bg-red-50 text-red-700 rounded-md">
-          {error}
-        </div>
-      )}
 
       {payments.length === 0 ? (
         <p className="text-gray-600">No payment history found.</p>

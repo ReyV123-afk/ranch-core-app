@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { User } from '../types';
+import { User, NewsInterest } from '../types';
 import { supabase } from '../lib/supabase';
 
 interface UserState {
@@ -9,8 +9,9 @@ interface UserState {
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
-  updateInterests: (interests: string[]) => Promise<void>;
+  updateInterests: (interests: NewsInterest[]) => Promise<void>;
   loadUserProfile: () => Promise<void>;
+  updateUserPreferences: (preferences: User['preferences']) => void;
 }
 
 export const useUserStore = create<UserState>((set, get) => ({
@@ -39,8 +40,13 @@ export const useUserStore = create<UserState>((set, get) => ({
           user: {
             id: authUser.id,
             email: authUser.email!,
-            interests: profile.interests,
-            isPremium: profile.is_premium,
+            interests: profile.interests || [],
+            isPremium: profile.is_premium || false,
+            preferences: profile.preferences || {
+              emailNotifications: true,
+              darkMode: false,
+              language: 'en'
+            }
           },
           loading: false,
         });
@@ -62,10 +68,17 @@ export const useUserStore = create<UserState>((set, get) => ({
     if (error) throw error;
 
     if (data.user) {
-      // Create user profile
+      // Create user profile with default preferences
       const { error: profileError } = await supabase
         .from('user_profiles')
-        .insert([{ id: data.user.id }]);
+        .insert([{
+          id: data.user.id,
+          preferences: {
+            emailNotifications: true,
+            darkMode: false,
+            language: 'en'
+          }
+        }]);
 
       if (profileError) throw profileError;
     }
@@ -77,7 +90,7 @@ export const useUserStore = create<UserState>((set, get) => ({
     set({ user: null });
   },
 
-  updateInterests: async (interests: string[]) => {
+  updateInterests: async (interests: NewsInterest[]) => {
     const user = get().user;
     if (!user) return;
 
@@ -95,4 +108,16 @@ export const useUserStore = create<UserState>((set, get) => ({
       throw error;
     }
   },
+
+  updateUserPreferences: (preferences) => {
+    set((state) => {
+      if (!state.user) return state;
+      return {
+        user: {
+          ...state.user,
+          preferences
+        }
+      };
+    });
+  }
 }));

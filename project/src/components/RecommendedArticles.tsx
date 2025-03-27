@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { newsService } from '../lib/newsService';
-import { NewsArticle } from '../lib/newsService';
+import { NewsArticle } from '../types';
 
 const RecommendedArticles: React.FC = () => {
   const { user } = useAuth();
