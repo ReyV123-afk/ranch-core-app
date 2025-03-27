@@ -1,6 +1,6 @@
 import { supabase } from './supabaseClient';
 import { NewsArticle } from './newsService';
-import { emailService } from './emailService';
+import { sendEmail } from './emailService';
 
 export interface Newsletter {
   id: string;
@@ -19,6 +19,30 @@ export interface NewsletterIssue {
   title: string;
   content: string;
   sentAt: string | null;
+}
+
+interface PremiumSubscription {
+  id: string;
+  user_id: string;
+  plan_id: string;
+  status: 'active' | 'cancelled' | 'expired';
+  start_date: string;
+  end_date: string;
+  payment_provider: 'square' | 'stripe';
+  payment_id: string;
+  created_at: string;
+  updated_at: string;
+}
+
+interface PremiumPlan {
+  id: string;
+  name: string;
+  description: string;
+  price: number;
+  interval: 'monthly' | 'yearly';
+  features: string[];
+  created_at: string;
+  updated_at: string;
 }
 
 class PremiumService {
@@ -172,11 +196,11 @@ class PremiumService {
 
       // Send emails to subscribers
       const sendPromises = subscribers.map(subscriber =>
-        emailService.sendNewsletter(
-          subscriber.email,
-          issue.title,
-          issue.content
-        )
+        sendEmail({
+          to: subscriber.email,
+          subject: issue.title,
+          html: issue.content
+        })
       );
 
       await Promise.all(sendPromises);
@@ -192,6 +216,138 @@ class PremiumService {
       console.error('Error sending newsletter issue:', error);
       throw error;
     }
+  }
+
+  async createSubscription(userId: string, planId: string, paymentDetails: {
+    provider: 'square' | 'stripe';
+    paymentId: string;
+  }): Promise<PremiumSubscription> {
+    const { data: plan, error: planError } = await supabase
+      .from('premium_plans')
+      .select('*')
+      .eq('id', planId)
+      .single();
+
+    if (planError || !plan) {
+      throw new Error('Plan not found');
+    }
+
+    const startDate = new Date().toISOString();
+    const endDate = new Date();
+    endDate.setMonth(endDate.getMonth() + (plan.interval === 'yearly' ? 12 : 1));
+
+    const { data: subscription, error: subscriptionError } = await supabase
+      .from('premium_subscriptions')
+      .insert({
+        user_id: userId,
+        plan_id: planId,
+        status: 'active',
+        start_date: startDate,
+        end_date: endDate.toISOString(),
+        payment_provider: paymentDetails.provider,
+        payment_id: paymentDetails.paymentId
+      })
+      .select()
+      .single();
+
+    if (subscriptionError) {
+      throw subscriptionError;
+    }
+
+    // Send welcome email
+    const { data: user, error: userError } = await supabase
+      .from('users')
+      .select('email, full_name')
+      .eq('id', userId)
+      .single();
+
+    if (!userError && user) {
+      await sendEmail({
+        to: user.email,
+        subject: 'Welcome to Premium!',
+        html: `
+          <h1>Welcome to Premium, ${user.full_name}!</h1>
+          <p>Thank you for upgrading to our premium plan. You now have access to all premium features.</p>
+          <p>Your subscription details:</p>
+          <ul>
+            <li>Plan: ${plan.name}</li>
+            <li>Interval: ${plan.interval}</li>
+            <li>Start Date: ${new Date(startDate).toLocaleDateString()}</li>
+            <li>End Date: ${new Date(endDate.toISOString()).toLocaleDateString()}</li>
+          </ul>
+          <p>If you have any questions, feel free to reach out to our support team.</p>
+        `
+      });
+    }
+
+    return subscription;
+  }
+
+  async cancelSubscription(subscriptionId: string): Promise<void> {
+    const { error } = await supabase
+      .from('premium_subscriptions')
+      .update({ status: 'cancelled' })
+      .eq('id', subscriptionId);
+
+    if (error) {
+      throw error;
+    }
+  }
+
+  async getSubscription(subscriptionId: string): Promise<PremiumSubscription | null> {
+    const { data, error } = await supabase
+      .from('premium_subscriptions')
+      .select('*')
+      .eq('id', subscriptionId)
+      .single();
+
+    if (error) {
+      throw error;
+    }
+
+    return data;
+  }
+
+  async getUserSubscription(userId: string): Promise<PremiumSubscription | null> {
+    const { data, error } = await supabase
+      .from('premium_subscriptions')
+      .select('*')
+      .eq('user_id', userId)
+      .eq('status', 'active')
+      .single();
+
+    if (error) {
+      throw error;
+    }
+
+    return data;
+  }
+
+  async getPlans(): Promise<PremiumPlan[]> {
+    const { data, error } = await supabase
+      .from('premium_plans')
+      .select('*')
+      .order('price', { ascending: true });
+
+    if (error) {
+      throw error;
+    }
+
+    return data;
+  }
+
+  async getPlan(planId: string): Promise<PremiumPlan | null> {
+    const { data, error } = await supabase
+      .from('premium_plans')
+      .select('*')
+      .eq('id', planId)
+      .single();
+
+    if (error) {
+      throw error;
+    }
+
+    return data;
   }
 }
 
