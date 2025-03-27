@@ -1,134 +1,136 @@
-import { supabase } from './supabaseClient';
-import { emailService } from './emailService';
-import { newsService } from './newsService';
+import { NewsArticle } from './newsService';
+import { sendEmail } from './emailService';
 
 interface EmailJob {
   id: string;
-  user_id: string;
-  email_frequency: 'daily' | 'weekly' | 'monthly';
-  categories: string[];
-  keywords: string[];
-  last_sent_at: string | null;
+  type: 'news' | 'welcome' | 'password-reset';
+  status: 'pending' | 'processing' | 'completed' | 'failed';
+  data: {
+    to: string;
+    subject: string;
+    template: string;
+    params?: Record<string, any>;
+  };
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 class EmailJobService {
-  async processEmailJobs(): Promise<void> {
-    try {
-      // Get all active email settings
-      const { data: settings, error: settingsError } = await supabase
-        .from('email_settings')
-        .select('*')
-        .eq('is_active', true);
+  private jobs: EmailJob[] = [];
 
-      if (settingsError) throw settingsError;
+  async createJob(job: Omit<EmailJob, 'id' | 'status' | 'createdAt' | 'updatedAt'>): Promise<EmailJob> {
+    const newJob: EmailJob = {
+      ...job,
+      id: Math.random().toString(36).substring(7),
+      status: 'pending',
+      createdAt: new Date(),
+      updatedAt: new Date()
+    };
 
-      for (const setting of settings) {
-        const shouldSend = this.shouldSendEmail(setting);
-        if (shouldSend) {
-          await this.sendEmailDigest(setting);
-        }
-      }
-    } catch (error) {
-      console.error('Error processing email jobs:', error);
-    }
+    this.jobs.push(newJob);
+    return newJob;
   }
 
-  private shouldSendEmail(setting: EmailJob): boolean {
-    if (!setting.last_sent_at) return true;
-
-    const lastSent = new Date(setting.last_sent_at);
-    const now = new Date();
-
-    switch (setting.email_frequency) {
-      case 'daily':
-        return now.getDate() !== lastSent.getDate() || 
-               now.getMonth() !== lastSent.getMonth() || 
-               now.getFullYear() !== lastSent.getFullYear();
-      case 'weekly':
-        const weekDiff = Math.floor((now.getTime() - lastSent.getTime()) / (7 * 24 * 60 * 60 * 1000));
-        return weekDiff >= 1;
-      case 'monthly':
-        return now.getMonth() !== lastSent.getMonth() || 
-               now.getFullYear() !== lastSent.getFullYear();
-      default:
-        return false;
+  async processJob(jobId: string): Promise<void> {
+    const job = this.jobs.find(j => j.id === jobId);
+    if (!job) {
+      throw new Error('Job not found');
     }
-  }
 
-  private async sendEmailDigest(setting: EmailJob): Promise<void> {
     try {
-      // Get articles based on user's preferences
-      const articles = await newsService.searchNews(
-        setting.keywords.join(' OR '),
-        {
-          category: setting.categories[0] || 'all',
-          date: 'week',
-          source: 'all',
-          sortBy: 'relevance'
-        },
-        1,
-        10
-      );
+      job.status = 'processing';
+      job.updatedAt = new Date();
 
-      if (articles.length === 0) return;
-
-      // Generate email content
-      const content = this.generateEmailContent(articles);
-
-      // Get user's email
-      const { data: user, error: userError } = await supabase
-        .from('users')
-        .select('email')
-        .eq('id', setting.user_id)
-        .single();
-
-      if (userError || !user?.email) {
-        throw new Error('User email not found');
+      switch (job.type) {
+        case 'news':
+          await this.processNewsEmail(job);
+          break;
+        case 'welcome':
+          await this.processWelcomeEmail(job);
+          break;
+        case 'password-reset':
+          await this.processPasswordResetEmail(job);
+          break;
       }
 
-      // Send email
-      await emailService.sendNewsletter(
-        user.email,
-        `Your ${setting.email_frequency} News Digest`,
-        content
-      );
-
-      // Log email delivery
-      await supabase.rpc('log_email_delivery', {
-        p_user_id: setting.user_id,
-        p_email_type: 'newsletter',
-        p_subject: `Your ${setting.email_frequency} News Digest`,
-        p_status: 'sent'
-      });
-
-      // Update last sent timestamp
-      await supabase
-        .from('email_settings')
-        .update({ last_sent_at: new Date().toISOString() })
-        .eq('id', setting.id);
-
+      job.status = 'completed';
+      job.updatedAt = new Date();
     } catch (error) {
-      console.error('Error sending email digest:', error);
-      
-      // Log failed delivery
-      await supabase.rpc('log_email_delivery', {
-        p_user_id: setting.user_id,
-        p_email_type: 'newsletter',
-        p_subject: `Your ${setting.email_frequency} News Digest`,
-        p_status: 'failed',
-        p_error_message: error instanceof Error ? error.message : 'Unknown error'
-      });
+      job.status = 'failed';
+      job.updatedAt = new Date();
+      throw error;
     }
   }
 
-  private generateEmailContent(articles: any[]): string {
-    return articles.map(article => `
-      <div class="article">
-        <h2>${article.title}</h2>
-        <p>${article.description}</p>
-        <p><a href="${article.url}">Read more</a></p>
-      </div>
-    `).join('\n');
+  private async processNewsEmail(job: EmailJob): Promise<void> {
+    const { to, subject, template, params } = job.data;
+    const { articles } = params as { articles: NewsArticle[] };
+
+    const html = this.generateNewsEmailTemplate(articles);
+    await sendEmail({ to, subject, html });
+  }
+
+  private async processWelcomeEmail(job: EmailJob): Promise<void> {
+    const { to, subject, template, params } = job.data;
+    const { name } = params as { name: string };
+
+    const html = this.generateWelcomeEmailTemplate(name);
+    await sendEmail({ to, subject, html });
+  }
+
+  private async processPasswordResetEmail(job: EmailJob): Promise<void> {
+    const { to, subject, template, params } = job.data;
+    const { resetToken } = params as { resetToken: string };
+
+    const resetUrl = `${window.location.origin}/reset-password?token=${resetToken}`;
+    const html = this.generatePasswordResetEmailTemplate(resetUrl);
+    await sendEmail({ to, subject, html });
+  }
+
+  private generateNewsEmailTemplate(articles: NewsArticle[]): string {
+    return `
+      <h1>Latest News from Ranch Core</h1>
+      <p>Here are the latest articles for you:</p>
+      ${articles.map(article => `
+        <div style="margin-bottom: 20px; padding: 10px; border: 1px solid #ddd;">
+          <h2>${article.title}</h2>
+          <p>${article.description}</p>
+          <a href="${article.url}">Read more</a>
+        </div>
+      `).join('')}
+    `;
+  }
+
+  private generateWelcomeEmailTemplate(name: string): string {
+    return `
+      <h1>Welcome to Ranch Core, ${name}!</h1>
+      <p>Thank you for joining our platform. We're excited to have you on board!</p>
+      <p>If you have any questions, feel free to reach out to our support team.</p>
+    `;
+  }
+
+  private generatePasswordResetEmailTemplate(resetUrl: string): string {
+    return `
+      <h1>Password Reset Request</h1>
+      <p>You requested a password reset. Click the link below to reset your password:</p>
+      <a href="${resetUrl}">Reset Password</a>
+      <p>If you didn't request this, please ignore this email.</p>
+    `;
+  }
+
+  async getJob(jobId: string): Promise<EmailJob | undefined> {
+    return this.jobs.find(j => j.id === jobId);
+  }
+
+  async getJobsByStatus(status: EmailJob['status']): Promise<EmailJob[]> {
+    return this.jobs.filter(j => j.status === status);
+  }
+
+  async deleteJob(jobId: string): Promise<void> {
+    const index = this.jobs.findIndex(j => j.id === jobId);
+    if (index !== -1) {
+      this.jobs.splice(index, 1);
+    }
   }
 }
 
