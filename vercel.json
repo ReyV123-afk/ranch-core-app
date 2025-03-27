@@ -12,17 +12,14 @@
   "routes": [
     {
       "src": "/(.*)",
-      "dest": "/$1"
+      "dest": "/index.html"
     }
   ],
   "env": {
-    "VITE_SUPABASE_URL": "@vite_supabase_url",
-    "VITE_SUPABASE_ANON_KEY": "@vite_supabase_anon_key",
-    "VITE_SENDGRID_API_KEY": "@vite_sendgrid_api_key",
-    "VITE_SENDGRID_FROM_EMAIL": "@vite_sendgrid_from_email",
-    "VITE_APP_URL": "@vite_app_url",
-    "VITE_SQUARE_ACCESS_TOKEN": "@vite_square_access_token",
-    "VITE_SQUARE_LOCATION_ID": "@vite_square_location_id",
-    "VITE_SQUARE_ENVIRONMENT": "@vite_square_environment"
+    "VITE_SUPABASE_URL": "https://zxufnpajymvskgagogbb.supabase.co",
+    "VITE_SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp4dWZucGFqeW12c2tnYWdvZ2JiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDI5ODIzNjYsImV4cCI6MjA1ODU1ODM2Nn0.KA2yjbMOzjrFDSt6aOWcG3UOeGHs9jPuaViVhVpNXBI",
+    "VITE_SQUARE_ACCESS_TOKEN": "EAAAl2DyPdfxifR6xqOWFCFwzz51P-m18g_JcYkJIfJOnRBrJzlJ63DqT-5bWhXt",
+    "VITE_SQUARE_LOCATION_ID": "sandbox-sq0idb-97SZ-u6F-nKUH8WF3Nq-Hw",
+    "VITE_SQUARE_ENVIRONMENT": "sandbox"
   }
 } 

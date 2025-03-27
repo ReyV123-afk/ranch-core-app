@@ -20,29 +20,44 @@ declare global {
 
 class EmailService {
   private supabase;
-  private sendgridApiKey: string;
+  private sendgridApiKey: string | null;
+  private isDevelopment: boolean;
 
   constructor() {
     this.supabase = createClient(
       import.meta.env.VITE_SUPABASE_URL,
       import.meta.env.VITE_SUPABASE_ANON_KEY
     );
-    this.sendgridApiKey = import.meta.env.VITE_SENDGRID_API_KEY;
-    sgMail.setApiKey(this.sendgridApiKey);
+    this.sendgridApiKey = import.meta.env.VITE_SENDGRID_API_KEY || null;
+    this.isDevelopment = import.meta.env.DEV;
+    
+    if (this.sendgridApiKey) {
+      sgMail.setApiKey(this.sendgridApiKey);
+    }
   }
 
   private async sendEmail(to: string, template: EmailTemplate): Promise<void> {
-    try {
-      await sgMail.send({
-        to,
-        from: import.meta.env.VITE_SENDGRID_FROM_EMAIL,
-        subject: template.subject,
-        html: template.html,
-        text: template.text,
-      });
-    } catch (error) {
-      console.error('Error sending email:', error);
-      throw error;
+    if (this.sendgridApiKey) {
+      try {
+        await sgMail.send({
+          to,
+          from: import.meta.env.VITE_SENDGRID_FROM_EMAIL,
+          subject: template.subject,
+          html: template.html,
+          text: template.text,
+        });
+      } catch (error) {
+        console.error('Error sending email:', error);
+        throw error;
+      }
+    } else {
+      // Mock implementation for development
+      console.log('Mock Email Sent:');
+      console.log('To:', to);
+      console.log('Subject:', template.subject);
+      console.log('Text:', template.text);
+      console.log('HTML:', template.html);
+      console.log('-------------------');
     }
   }
 

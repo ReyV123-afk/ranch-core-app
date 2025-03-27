@@ -13,7 +13,6 @@
   },
   "dependencies": {
     "@netlify/functions": "^2.6.0",
-    "@sendgrid/mail": "^8.1.0",
     "@supabase/supabase-js": "^2.39.3",
     "@types/lodash": "^4.17.16",
     "@types/stripe": "^8.0.416",
